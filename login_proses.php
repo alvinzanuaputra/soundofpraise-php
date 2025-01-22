@@ -1,42 +1,35 @@
 <?php
 session_start();
-
-// Koneksi ke database
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "soundofpraise-php";
-
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Periksa koneksi
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require 'db.php'; // Koneksi ke database menggunakan PDO
 
 // Ambil data dari form
-$name = $_POST['name'];
-$church = $_POST['church'];
+$name = htmlspecialchars($_POST['name']);
+$church = htmlspecialchars($_POST['church']);
 
-// Query untuk memeriksa apakah pengguna terdaftar
-$sql = "SELECT * FROM users WHERE name = ? AND church = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("ss", $name, $church);
-$stmt->execute();
-$result = $stmt->get_result();
+try {
+    // Query untuk memeriksa apakah pengguna terdaftar
+    $sql = "SELECT * FROM users WHERE name = :name AND church = :church";
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(':name', $name);
+    $stmt->bindParam(':church', $church);
+    $stmt->execute();
 
-if ($result->num_rows > 0) {
-    // Pengguna ditemukan, login berhasil
-    $_SESSION['user'] = $result->fetch_assoc();
-    $_SESSION['login_success'] = true; // Set session login success
-    header('Location: dashboard.php'); // Kembali ke halaman login untuk menampilkan toast
-    exit();
-} else {
-    // Pengguna tidak ditemukan, login gagal
-    $_SESSION['login_error'] = "Username atau Gereja tidak sesuai."; // Set pesan error
-    header('Location: login.php'); // Kembali ke halaman login
+    if ($stmt->rowCount() > 0) {
+        // Pengguna ditemukan, login berhasil
+        $_SESSION['user'] = $stmt->fetch(PDO::FETCH_ASSOC);
+        $_SESSION['login_success'] = true;
+        header('Location: dashboard.php'); // Redirect ke dashboard
+        exit();
+    } else {
+        // Pengguna tidak ditemukan, login gagal
+        $_SESSION['login_error'] = "Username atau Gereja tidak sesuai.";
+        header('Location: login.php'); // Redirect kembali ke login
+        exit();
+    }
+} catch (PDOException $e) {
+    // Error dalam query
+    $_SESSION['login_error'] = "Terjadi kesalahan saat login: " . $e->getMessage();
+    header('Location: login.php');
     exit();
 }
-
-// $conn->close();
 ?>
